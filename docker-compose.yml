@@ -1,0 +1,58 @@
+name: ai-research-assistant
+
+services:
+  api:
+    build:
+      context: .
+      target: runtime
+    ports:
+      - "8000:8000"
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_research_assistant
+      CHROMA_HOST: chromadb
+      CHROMA_PORT: "8000"
+      LLM_API_KEY: ${LLM_API_KEY:-sk-placeholder}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.openai.com/v1}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      ENVIRONMENT: local
+    depends_on:
+      postgres:
+        condition: service_healthy
+      chromadb:
+        condition: service_started
+    volumes:
+      - ./src:/app/src
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ai_research_assistant
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  chromadb:
+    image: chromadb/chroma:0.5.20
+    ports:
+      - "8001:8000"
+    volumes:
+      - chroma_data:/chroma/chroma
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  chroma_data:
