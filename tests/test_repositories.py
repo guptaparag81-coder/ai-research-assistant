@@ -165,6 +165,33 @@ async def test_document_repository_save_flushes_in_place_changes(
     assert saved.status == DocumentStatus.READY
 
 
+async def test_document_repository_commit_persists_pending_changes(
+    db_session: AsyncSession,
+) -> None:
+    user = await _create_user(db_session)
+    repo = DocumentRepository(db_session)
+    document = await repo.create(
+        Document(
+            owner_id=user.id,
+            filename="a.txt",
+            document_type=DocumentType.TXT,
+            content_type="text/plain",
+            file_size_bytes=10,
+            status=DocumentStatus.PROCESSING,
+        )
+    )
+
+    document.status = DocumentStatus.FAILED
+    document.error_message = "boom"
+    await repo.save(document)
+    await repo.commit()
+
+    fetched = await repo.get_by_id(document.id, user.id)
+    assert fetched is not None
+    assert fetched.status == DocumentStatus.FAILED
+    assert fetched.error_message == "boom"
+
+
 async def test_document_repository_delete(db_session: AsyncSession) -> None:
     user = await _create_user(db_session)
     repo = DocumentRepository(db_session)

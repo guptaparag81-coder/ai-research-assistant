@@ -49,6 +49,11 @@ class DocumentRepository:
         await self._session.flush()
         return document
 
+    async def commit(self) -> None:
+        """Durably commit the current transaction (used to persist failure state
+        that must survive an exception unwinding the rest of the request)."""
+        await self._session.commit()
+
     async def delete(self, document: Document) -> None:
         await self._session.delete(document)
         await self._session.flush()

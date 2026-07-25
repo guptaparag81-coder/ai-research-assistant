@@ -37,12 +37,21 @@ class Document(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     filename: Mapped[str] = mapped_column(String(512), nullable=False)
     title: Mapped[str | None] = mapped_column(String(512), nullable=True)
     document_type: Mapped[DocumentType] = mapped_column(
-        Enum(DocumentType, name="document_type"), nullable=False
+        Enum(
+            DocumentType,
+            name="document_type",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
+        nullable=False,
     )
     content_type: Mapped[str] = mapped_column(String(255), nullable=False)
     file_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     status: Mapped[DocumentStatus] = mapped_column(
-        Enum(DocumentStatus, name="document_status"),
+        Enum(
+            DocumentStatus,
+            name="document_status",
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+        ),
         default=DocumentStatus.PENDING,
         nullable=False,
     )

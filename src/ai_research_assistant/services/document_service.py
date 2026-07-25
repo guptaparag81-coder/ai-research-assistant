@@ -60,13 +60,17 @@ class DocumentService:
             await self._document_repository.add_chunks(chunks)
             document.chunk_count = len(chunks)
             document.status = DocumentStatus.READY
+            await self._document_repository.save(document)
         except Exception as exc:
             document.status = DocumentStatus.FAILED
             document.error_message = str(exc)
             logger.error("document_ingestion_failed", document_id=str(document.id), error=str(exc))
-            raise
-        finally:
+            # Commit the failure state now: the exception below will unwind through
+            # the request-scoped session, which rolls back on error and would
+            # otherwise silently erase this FAILED row along with it.
             await self._document_repository.save(document)
+            await self._document_repository.commit()
+            raise
 
         return document
 

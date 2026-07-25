@@ -18,6 +18,7 @@ def document_repository() -> MagicMock:
     repo.create = AsyncMock(side_effect=lambda document: document)
     repo.add_chunks = AsyncMock()
     repo.save = AsyncMock(side_effect=lambda document: document)
+    repo.commit = AsyncMock()
     repo.delete = AsyncMock()
     return repo
 
@@ -62,6 +63,7 @@ async def test_ingest_upload_succeeds_and_marks_ready(
     document_repository.create.assert_awaited_once()
     document_repository.add_chunks.assert_awaited_once()
     document_repository.save.assert_awaited_once()
+    document_repository.commit.assert_not_awaited()
 
 
 async def test_ingest_upload_marks_failed_on_processing_error(
@@ -77,6 +79,7 @@ async def test_ingest_upload_marks_failed_on_processing_error(
     saved_document = document_repository.save.await_args.args[0]
     assert saved_document.status == DocumentStatus.FAILED
     assert saved_document.error_message == "chunking exploded"
+    document_repository.commit.assert_awaited_once()
 
 
 async def test_get_document_raises_not_found(

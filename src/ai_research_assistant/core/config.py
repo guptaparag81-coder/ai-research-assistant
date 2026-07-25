@@ -1,9 +1,10 @@
 """Application configuration loaded from environment variables."""
 
+import getpass
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import SecretStr, computed_field
+from pydantic import Field, SecretStr, computed_field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -32,8 +33,12 @@ class Settings(BaseSettings):
     port: int = 8000
 
     # --- Database ---
-    postgres_user: str = "postgres"
-    postgres_password: SecretStr = SecretStr("postgres")
+    # Defaults to the current OS user with no password, matching Homebrew
+    # PostgreSQL's default superuser role (peer/trust auth). Override via
+    # POSTGRES_USER / POSTGRES_PASSWORD for other setups (e.g. Docker's
+    # postgres/postgres role).
+    postgres_user: str = Field(default_factory=getpass.getuser)
+    postgres_password: SecretStr = SecretStr("")
     postgres_host: str = "localhost"
     postgres_port: int = 5432
     postgres_db: str = "ai_research_assistant"
