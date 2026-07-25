@@ -75,6 +75,25 @@ def _error_payload(
     return {"error": {"code": error_code, "message": message, "details": details or {}}}
 
 
+def _json_safe(value: Any) -> Any:
+    """Recursively replace non-JSON-serializable values with safe equivalents.
+
+    Pydantic/FastAPI validation errors can embed the raw request body as
+    `bytes` in an error's `input` field (e.g. when a JSON-body endpoint
+    receives a non-JSON payload, such as the form-encoded credentials the
+    Swagger UI "Authorize" dialog sends). `bytes` isn't JSON-serializable, so
+    passing it straight into `JSONResponse` raises `TypeError` deep inside
+    `json.dumps` instead of returning the intended 422 response.
+    """
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="replace")
+    if isinstance(value, dict):
+        return {key: _json_safe(val) for key, val in value.items()}
+    if isinstance(value, list | tuple):
+        return [_json_safe(item) for item in value]
+    return value
+
+
 def register_exception_handlers(app: FastAPI) -> None:
     """Attach global exception handlers to the FastAPI application."""
 
@@ -95,11 +114,12 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def handle_validation_error(
         request: Request, exc: RequestValidationError
     ) -> JSONResponse:
-        logger.warning("request_validation_error", path=request.url.path, errors=exc.errors())
+        errors = _json_safe(exc.errors())
+        logger.warning("request_validation_error", path=request.url.path, errors=errors)
         return JSONResponse(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             content=_error_payload(
-                "validation_error", "Request validation failed", {"errors": exc.errors()}
+                "validation_error", "Request validation failed", {"errors": errors}
             ),
         )
 

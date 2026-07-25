@@ -26,7 +26,7 @@ from ai_research_assistant.services.retrieval.rag_service import RAGChatService
 from ai_research_assistant.services.retrieval.retriever import Retriever
 from ai_research_assistant.services.vectorstore.chroma_store import ChromaVectorStore
 
-_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
+_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 

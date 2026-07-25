@@ -4,8 +4,9 @@ from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
 import pytest
+from fastapi.security import OAuth2PasswordRequestForm
 
-from ai_research_assistant.api.v1.auth import login, register
+from ai_research_assistant.api.v1.auth import login, login_via_oauth2_form, register
 from ai_research_assistant.core.config import Settings
 from ai_research_assistant.core.exceptions import ConflictError, UnauthorizedError
 from ai_research_assistant.core.security import hash_password
@@ -97,3 +98,34 @@ async def test_login_rejects_inactive_user() -> None:
         await login(
             UserLogin(email="a@example.com", password="password123"), user_repository, settings
         )
+
+
+async def test_oauth2_form_login_succeeds_with_correct_credentials() -> None:
+    """Covers the Swagger UI Authorize dialog's code path directly (the OAuth2
+    password-flow form-data endpoint), mirroring test_login_succeeds_with_correct_credentials."""
+    user = User(
+        id=uuid4(),
+        email="a@example.com",
+        hashed_password=hash_password("password123"),
+        is_active=True,
+    )
+    user_repository = MagicMock()
+    user_repository.get_by_email = AsyncMock(return_value=user)
+    settings = Settings(secret_key="test-secret")
+    form_data = OAuth2PasswordRequestForm(username="a@example.com", password="password123")
+
+    token_response = await login_via_oauth2_form(form_data, user_repository, settings)
+
+    assert token_response.access_token
+    assert token_response.token_type == "bearer"
+
+
+async def test_oauth2_form_login_rejects_wrong_password() -> None:
+    user = User(email="a@example.com", hashed_password=hash_password("correct-password"))
+    user_repository = MagicMock()
+    user_repository.get_by_email = AsyncMock(return_value=user)
+    settings = Settings(secret_key="test-secret")
+    form_data = OAuth2PasswordRequestForm(username="a@example.com", password="wrong-password")
+
+    with pytest.raises(UnauthorizedError):
+        await login_via_oauth2_form(form_data, user_repository, settings)
