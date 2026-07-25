@@ -19,6 +19,16 @@ class EmbeddingService:
             openai_api_key=settings.llm_api_key.get_secret_value(),
             openai_api_base=settings.llm_base_url,
             dimensions=settings.embedding_dimensions,
+            # By default, OpenAIEmbeddings pre-tokenizes input into token IDs
+            # (via tiktoken) for OpenAI's own length-safety handling. Many
+            # self-hosted OpenAI-compatible embedding servers (Ollama, LocalAI,
+            # text-embeddings-inference, etc.) only accept plain-text input and
+            # reject token-ID arrays with "invalid input type". Disabling this
+            # is safe here regardless of provider: our own DocumentChunker
+            # already bounds chunk size well under any embedding model's
+            # context limit, so OpenAI's length-safety splitting is never
+            # actually needed.
+            check_embedding_ctx_length=False,
         )
 
     @retry(
